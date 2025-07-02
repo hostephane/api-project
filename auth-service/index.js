@@ -125,22 +125,23 @@ app.get("/auth/failure", (req, res) => {
   res.status(401).send("Échec de l'authentification");
 });
 
-// Profil protégé, renvoie user depuis la DB
 app.get("/profile", async (req, res) => {
-  const token = req.cookies.jwt;
+  // Récupérer token dans cookie OU header Authorization (Bearer token)
+  const token = req.cookies.jwt || (req.headers.authorization && req.headers.authorization.split(" ")[1]);
   if (!token) return res.status(401).json({ error: "Non authentifié" });
 
   try {
     const payload = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findOne({ googleId: payload.id }).select(
-      "-_id displayName email googleId"
-    );
+    const user = await User.findOne({ googleId: payload.id }).select("-_id displayName email googleId");
     if (!user) return res.status(404).json({ error: "Utilisateur non trouvé" });
     res.json({ user });
   } catch (e) {
     res.status(401).json({ error: "Token invalide" });
   }
 });
+
+
+
 
 // Récupérer token JWT
 app.get("/token", (req, res) => {
