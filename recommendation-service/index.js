@@ -3,7 +3,7 @@ const express = require("express");
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
 const mongoose = require("mongoose");
-const externalRoutes = require('./routes/external');
+const externalRouter = require('./routes/external');
 
 const app = express();
 console.log("✔️  index.js chargé !");
@@ -21,8 +21,11 @@ app.use(
   })
 );
 
-app.use('/external', externalRoutes);
+// Parsing JSON avant les routes qui en ont besoin
 app.use(express.json());
+
+// Monte ton router externe sous /external
+app.use('/external', externalRouter);
 
 
 
@@ -193,7 +196,9 @@ app.post("/skip", authenticateToken, async (req, res) => {
   }
 });
 
-const port = process.env.PORT || 5001;
-app.listen(port, () => {
-  console.log("🎬 Recommendation Service on port", port);
+const PORT = process.env.PORT || 5000;
+// N’écouter que sur IPv4 localhost
+app.listen(PORT, '127.0.0.1', () => {
+  console.log("🎬 Recommendation Service on 127.0.0.1:" + PORT);
 });
+
