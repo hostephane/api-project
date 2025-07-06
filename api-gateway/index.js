@@ -1,42 +1,39 @@
+// File: api-gateway/index.js
 const express = require("express");
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
 const { createProxyMiddleware } = require("http-proxy-middleware");
 require("dotenv").config();
-
 const app = express();
 
-app.use(cors({
-  origin: "http://localhost:5173",
-  credentials: true,
-}));
+// CORS + JSON
+app.use(cors({ origin: "http://localhost:5173", credentials: true }));
 app.use(express.json());
 
-// Middleware pour vérifier JWT (sauf pour les routes publiques)
+// Middleware JWT
 function authenticateToken(req, res, next) {
-  // Routes publiques (ex : /auth/google, /auth/google/callback)
-  if (
-    req.path.startsWith("/auth/google") ||
-    req.path.startsWith("/auth/google/callback") ||
-    req.path === "/" 
-  ) {
-    return next();
-  }
-
-  const authHeader = req.headers["authorization"];
-  const token = authHeader && authHeader.split(" ")[1];
+  const authHeader = req.headers["authorization"] || "";
+  const token = authHeader.startsWith("Bearer ")
+    ? authHeader.slice(7)
+    : null;
   if (!token) return res.status(401).json({ error: "Token manquant" });
-
   try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = payload;
+    req.user = jwt.verify(token, process.env.JWT_SECRET);
     next();
-  } catch (e) {
+  } catch {
     return res.status(401).json({ error: "Token invalide" });
   }
 }
 
+// Route de test protégée
+app.get("/ping-protected", authenticateToken, (req, res) => {
+  res.json({ message: "OK", user: req.user });
+});
+
+// Applique JWT à tout le reste
 app.use(authenticateToken);
+
+// —— tes proxies ——
 
 // Proxy vers auth-service
 app.use(
@@ -45,9 +42,6 @@ app.use(
     target: process.env.AUTH_SERVICE_URL || "http://localhost:4000",
     changeOrigin: true,
     pathRewrite: { "^/auth": "/auth" },
-    onProxyReq(proxyReq, req, res) {
-      // On peut transférer des headers spécifiques si besoin
-    },
   })
 );
 
@@ -60,6 +54,8 @@ app.use(
     pathRewrite: { "^/recommendations": "/recommendations" },
   })
 );
+
+// Proxy like
 app.use(
   "/like",
   createProxyMiddleware({
@@ -68,6 +64,8 @@ app.use(
     pathRewrite: { "^/like": "/like" },
   })
 );
+
+// Proxy skip
 app.use(
   "/skip",
   createProxyMiddleware({
@@ -77,12 +75,8 @@ app.use(
   })
 );
 
-// Endpoint racine
-app.get("/", (req, res) => {
-  res.send("✅ API Gateway is running");
-});
+// Root public
+app.get("/", (req, res) => res.send("✅ API Gateway is running"));
 
 const port = process.env.PORT || 3000;
-app.listen(port, () => {
-  console.log(`🚀 API Gateway listening on port ${port}`);
-});
+app.listen(port, () => console.log(`🚀 API Gateway listening on port ${port}`));
