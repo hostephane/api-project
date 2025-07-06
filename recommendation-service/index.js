@@ -3,8 +3,30 @@ const express = require("express");
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
 const mongoose = require("mongoose");
+const externalRoutes = require('./routes/external');
 
 const app = express();
+console.log("✔️  index.js chargé !");
+
+// Middleware global de logging
+app.use((req, res, next) => {
+  console.log(`>>> ${req.method} ${req.url}`);
+  next();
+});
+
+app.use(
+  cors({
+    origin: "http://localhost:5173",
+    credentials: true,
+  })
+);
+
+app.use('/external', externalRoutes);
+app.use(express.json());
+
+
+
+
 
 // Connexion MongoDB
 mongoose.connect(process.env.MONGODB_URI, {
@@ -14,14 +36,9 @@ mongoose.connect(process.env.MONGODB_URI, {
 .then(() => console.log("✅ MongoDB connecté dans recommendation-service"))
 .catch((err) => console.error("❌ Erreur MongoDB:", err));
 
-app.use(
-  cors({
-    origin: "http://localhost:5173",
-    credentials: true,
-  })
-);
 
-app.use(express.json());
+
+
 
 // Middleware d’authentification JWT
 function authenticateToken(req, res, next) {
@@ -75,6 +92,23 @@ async function initFilms() {
 mongoose.connection.once("open", () => {
   initFilms();
 });
+
+// ===== DEBUG ROUTE =====
+// Liste brute des films en base
+app.get('/films', async (req, res) => {
+  
+  try {
+    const films = await Film.find();
+    console.log(`🗂  ${films.length} films en base`);
+    return res.json(films);
+  } catch (err) {
+    console.error('❌ Erreur dans /films :', err);
+    return res.status(500).json({ error: 'Erreur interne' });
+  }
+});
+// ========================
++console.log("🔍 DEBUG: route GET /films enregistrée");
+
 
 app.get("/recommendations", authenticateToken, async (req, res) => {
   const userId = req.user.id;
@@ -159,7 +193,7 @@ app.post("/skip", authenticateToken, async (req, res) => {
   }
 });
 
-const port = process.env.PORT || 5000;
+const port = process.env.PORT || 5001;
 app.listen(port, () => {
   console.log("🎬 Recommendation Service on port", port);
 });
