@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useSwipeable } from "react-swipeable";
 import './App.css';
+import WinnersStats from "./components/WinnersStats";
 
 function LoginButton() {
   return (
@@ -105,8 +106,7 @@ export default function App() {
   }
 };
 
-
-  // gestion like
+// gestion like
 const handleLike = () => {
   if (!recommendations[currentIndex]) return;
 
@@ -114,6 +114,27 @@ const handleLike = () => {
   console.log("handleLike appelé sur :", currentMovie.title);
 
   setSwipeClass("swipe-right");
+
+  // Enregistrer le "winner" dans la base PostgreSQL via ton API backend
+  fetch("http://localhost:5000/winners", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${jwtToken}`, // Assure-toi que jwtToken est défini dans le scope
+    },
+    body: JSON.stringify({
+      userId: user.id,      // adapte selon ta structure d’objet user (ex: user.sub)
+      filmId: currentMovie._id,
+    }),
+  })
+    .then(res => res.json())
+    .then(data => {
+      console.log("Winner enregistré:", data);
+    })
+    .catch(err => {
+      console.error("Erreur enregistrement winner:", err);
+    });
+
   setTimeout(() => {
     setLiked((prev) => {
       const isAlreadyLiked = prev.some(m => m._id === currentMovie._id);
@@ -130,6 +151,7 @@ const handleLike = () => {
     });
   }, 300);
 };
+
 
 
   // Gestion Skip
@@ -237,6 +259,8 @@ const handleLike = () => {
           <li key={i}>{movie.title} ({movie.genre})</li>
         ))}
       </ul>
+
+      <WinnersStats />
 
       <p style={{ fontSize: "0.8rem", color: "#666" }}>
         Swipe à gauche pour passer, à droite pour aimer.

@@ -4,6 +4,7 @@ const cors = require("cors");
 const jwt = require("jsonwebtoken");
 const mongoose = require("mongoose");
 const pgPool = require("./db/postgres");
+const winnersRoute = require('./routes/winners');
 
 const app = express();
 
@@ -23,6 +24,8 @@ app.use(
 );
 
 app.use(express.json());
+
+app.use('/winners', winnersRoute);
 
 // Middleware d’authentification JWT
 function authenticateToken(req, res, next) {
